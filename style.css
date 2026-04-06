@@ -73,6 +73,10 @@ body {
   background: var(--color-primary-dark);
 }
 
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
 .btn-secondary {
   background: transparent;
   color: var(--color-primary);
@@ -84,6 +88,10 @@ body {
   cursor: pointer;
   min-height: 44px;
   font-family: var(--font);
+}
+
+.btn-secondary:hover {
+  background: rgba(0,122,255,0.08);
 }
 
 .btn-icon {
@@ -99,6 +107,10 @@ body {
   color: var(--color-text-secondary);
 }
 
+.btn-icon:hover {
+  color: var(--color-text);
+}
+
 .btn-danger {
   background: var(--color-danger);
   color: #fff;
@@ -110,6 +122,10 @@ body {
   cursor: pointer;
   min-height: 44px;
   font-family: var(--font);
+}
+
+.btn-danger:hover {
+  opacity: 0.85;
 }
 
 /* === Sections === */
@@ -140,6 +156,10 @@ body {
   align-items: center;
   justify-content: center;
   font-family: var(--font);
+}
+
+.section-toggle:hover .toggle-arrow {
+  color: var(--color-text);
 }
 
 .toggle-arrow {
@@ -181,6 +201,10 @@ body {
 
 .card:active {
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.card:hover:not(.expanded) {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 .card.deadline-warning {
@@ -407,6 +431,10 @@ body {
   line-height: 1;
 }
 
+.btn-increment:hover {
+  opacity: 0.85;
+}
+
 .btn-decrement {
   background: var(--color-text-secondary);
   color: #fff;
@@ -422,6 +450,10 @@ body {
   justify-content: center;
   flex-shrink: 0;
   line-height: 1;
+}
+
+.btn-decrement:hover {
+  opacity: 0.75;
 }
 
 .req-balance-input {
