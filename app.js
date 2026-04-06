@@ -298,4 +298,233 @@ async function init() {
   render();
 }
 
+// === Event Handlers ===
+document.getElementById('app').addEventListener('click', async (e) => {
+  const target = e.target;
+  const actionEl = target.closest('[data-action]');
+  const action = actionEl?.dataset.action;
+
+  if (!action) {
+    // No data-action — check if clicking collapsed card area to expand
+    const collapsed = target.closest('.card-collapsed');
+    if (collapsed) {
+      const card = collapsed.closest('.card');
+      const id = card?.dataset.id;
+      if (id && id !== expandedCardId) {
+        expandedCardId = id;
+        render();
+      }
+    }
+    return;
+  }
+
+  const bonusId = actionEl.dataset.id || actionEl.dataset.bonusId;
+
+  if (action === 'expand') {
+    const card = actionEl.closest('.card');
+    const id = card?.dataset.id;
+    if (id && id !== expandedCardId) {
+      expandedCardId = id;
+      render();
+    }
+    return;
+  }
+
+  if (action === 'close') {
+    expandedCardId = null;
+    render();
+    return;
+  }
+
+  if (action === 'mark-complete') {
+    const bonus = bonuses.find(b => b.id === bonusId);
+    if (bonus) {
+      bonus.status = 'completed';
+      await save(bonus);
+      expandedCardId = null;
+      render();
+    }
+    return;
+  }
+
+  if (action === 'reactivate') {
+    const bonus = bonuses.find(b => b.id === bonusId);
+    if (bonus) {
+      bonus.status = 'active';
+      await save(bonus);
+      expandedCardId = null;
+      render();
+    }
+    return;
+  }
+
+  if (action === 'delete') {
+    if (confirm('Delete this bonus? This cannot be undone.')) {
+      await deleteById(bonusId);
+      bonuses = bonuses.filter(b => b.id !== bonusId);
+      if (expandedCardId === bonusId) expandedCardId = null;
+      render();
+    }
+    return;
+  }
+
+  if (action === 'edit') {
+    openEditForm(bonusId);
+    return;
+  }
+
+  if (action === 'increment') {
+    const reqId = actionEl.dataset.reqId;
+    const bId = actionEl.dataset.bonusId;
+    const bonus = bonuses.find(b => b.id === bId);
+    const req = bonus?.requirements.find(r => r.id === reqId);
+    if (req && req.currentProgress < req.targetAmount) {
+      req.currentProgress++;
+      await save(bonus);
+      render();
+    }
+    return;
+  }
+
+  if (action === 'decrement') {
+    const reqId = actionEl.dataset.reqId;
+    const bId = actionEl.dataset.bonusId;
+    const bonus = bonuses.find(b => b.id === bId);
+    const req = bonus?.requirements.find(r => r.id === reqId);
+    if (req && req.currentProgress > 0) {
+      req.currentProgress--;
+      await save(bonus);
+      render();
+    }
+    return;
+  }
+
+  if (action === 'slider-tap') {
+    const reqId = actionEl.dataset.reqId;
+    const bId = actionEl.dataset.bonusId;
+    const bonus = bonuses.find(b => b.id === bId);
+    const req = bonus?.requirements.find(r => r.id === reqId);
+    if (req) {
+      const val = prompt(`Enter amount (0–${req.targetAmount}):`, req.currentProgress);
+      if (val !== null) {
+        const num = Math.max(0, Math.min(req.targetAmount, parseFloat(val) || 0));
+        req.currentProgress = num;
+        await save(bonus);
+        render();
+      }
+    }
+    return;
+  }
+
+  if (action === 'toggle-req') {
+    const reqId = actionEl.dataset.reqId;
+    const bId = actionEl.dataset.bonusId;
+    const bonus = bonuses.find(b => b.id === bId);
+    const req = bonus?.requirements.find(r => r.id === reqId);
+    if (req) {
+      req.completed = actionEl.checked;
+      await save(bonus);
+      render();
+    }
+    return;
+  }
+
+  if (action === 'log-deposit') {
+    const bonus = bonuses.find(b => b.id === bonusId);
+    if (bonus) {
+      const today = new Date().toISOString().split('T')[0];
+      const date = prompt('Deposit date (YYYY-MM-DD):', today);
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        bonus.directDepositDates.push(date);
+        await save(bonus);
+        render();
+      } else if (date) {
+        alert('Please enter a date in YYYY-MM-DD format.');
+      }
+    }
+    return;
+  }
+
+  if (action === 'remove-deposit-date') {
+    const bId = actionEl.dataset.bonusId;
+    const index = Number(actionEl.dataset.index);
+    const bonus = bonuses.find(b => b.id === bId);
+    if (bonus) {
+      const sorted = [...bonus.directDepositDates].sort();
+      const dateToRemove = sorted[index];
+      const origIndex = bonus.directDepositDates.indexOf(dateToRemove);
+      if (origIndex > -1) {
+        bonus.directDepositDates.splice(origIndex, 1);
+        await save(bonus);
+        render();
+      }
+    }
+    return;
+  }
+});
+
+document.getElementById('app').addEventListener('input', (e) => {
+  const target = e.target;
+  if (target.dataset.action !== 'slider-change') return;
+
+  const bId = target.dataset.bonusId;
+  const reqId = target.dataset.reqId;
+  const bonus = bonuses.find(b => b.id === bId);
+  const req = bonus?.requirements.find(r => r.id === reqId);
+  if (!req) return;
+
+  req.currentProgress = Number(target.value);
+
+  // Update display inline without re-rendering entire card
+  const block = target.closest('.requirement-block');
+  if (block) {
+    const progressText = block.querySelector('.req-progress-text');
+    if (progressText) progressText.textContent = `${formatCurrency(req.currentProgress)} / ${formatCurrency(req.targetAmount)}`;
+    const valueSpan = block.querySelector('.req-slider-value');
+    if (valueSpan) valueSpan.textContent = formatCurrency(req.currentProgress);
+  }
+});
+
+document.getElementById('app').addEventListener('change', async (e) => {
+  const target = e.target;
+
+  if (target.dataset.action === 'slider-change') {
+    const bId = target.dataset.bonusId;
+    const bonus = bonuses.find(b => b.id === bId);
+    if (bonus) await save(bonus);
+    return;
+  }
+
+  if (target.dataset.action === 'balance-change') {
+    const bId = target.dataset.bonusId;
+    const reqId = target.dataset.reqId;
+    const bonus = bonuses.find(b => b.id === bId);
+    const req = bonus?.requirements.find(r => r.id === reqId);
+    if (req) {
+      req.currentProgress = Math.max(0, parseFloat(target.value) || 0);
+      const block = target.closest('.requirement-block');
+      if (block) {
+        const progressText = block.querySelector('.req-progress-text');
+        if (progressText) progressText.textContent = `${formatCurrency(req.currentProgress)} / ${formatCurrency(req.targetAmount)}`;
+      }
+      await save(bonus);
+    }
+    return;
+  }
+});
+
+completedToggle.addEventListener('click', () => {
+  const arrow = completedToggle.querySelector('.toggle-arrow');
+  const cards = document.getElementById('completed-cards');
+  const isCollapsed = arrow.classList.contains('collapsed');
+  arrow.classList.toggle('collapsed');
+  cards.hidden = !isCollapsed ? true : false;
+  completedToggle.setAttribute('aria-expanded', isCollapsed ? 'true' : 'false');
+});
+
+// Placeholder — will be replaced in Task 7
+function openEditForm(bonusId) {
+  console.warn('openEditForm not yet implemented', bonusId);
+}
+
 init();
