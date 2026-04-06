@@ -112,9 +112,168 @@ function renderCollapsedCard(bonus) {
   `;
 }
 
-// Placeholder — will be implemented in Task 5
+function renderDepositDates(bonus) {
+  const sorted = [...bonus.directDepositDates].sort();
+  return `
+    <div class="deposit-dates">
+      <h4>Direct Deposit Dates</h4>
+      ${sorted.length > 0 ? `
+        <ul class="deposit-date-list">
+          ${sorted.map((d, i) => `
+            <li>
+              <span>${formatDate(d)}</span>
+              <button class="deposit-date-remove" data-action="remove-deposit-date"
+                      data-bonus-id="${bonus.id}" data-index="${i}" aria-label="Remove date">&times;</button>
+            </li>
+          `).join('')}
+        </ul>
+      ` : '<p style="font-size:13px;color:var(--color-text-secondary);padding:4px 0">None logged yet</p>'}
+      <button class="btn-secondary btn-log-deposit" data-action="log-deposit" data-id="${bonus.id}">
+        + Log Deposit Date
+      </button>
+    </div>`;
+}
+
+function renderRequirementBlock(req, bonusId) {
+  const completedClass = req.completed ? 'req-completed' : '';
+  let progressHtml = '';
+
+  switch (req.type) {
+    case 'direct_deposit_total':
+      progressHtml = `
+        <div class="req-progress-text">${formatCurrency(req.currentProgress)} / ${formatCurrency(req.targetAmount)}</div>
+        <div class="req-slider-row">
+          <input type="range" class="req-slider" min="0" max="${req.targetAmount}" step="1"
+                 value="${req.currentProgress}"
+                 data-action="slider-change" data-bonus-id="${bonusId}" data-req-id="${req.id}"
+                 aria-label="Deposit amount">
+          <span class="req-slider-value" data-action="slider-tap"
+                data-bonus-id="${bonusId}" data-req-id="${req.id}">
+            ${formatCurrency(req.currentProgress)}
+          </span>
+        </div>`;
+      break;
+
+    case 'direct_deposit_count':
+    case 'debit_transactions':
+      progressHtml = `
+        <div class="req-progress-text">${req.currentProgress} / ${req.targetAmount}${
+          req.type === 'direct_deposit_count' && req.perUnitMinimum
+            ? ` ($${req.perUnitMinimum}+ each)`
+            : req.type === 'debit_transactions' ? ' transactions' : ' deposits'
+        }</div>
+        <div class="req-increment-row">
+          <button class="btn-decrement" data-action="decrement"
+                  data-bonus-id="${bonusId}" data-req-id="${req.id}" aria-label="Decrease">−</button>
+          <span style="font-size:16px;font-weight:600;min-width:30px;text-align:center">${req.currentProgress}</span>
+          <button class="btn-increment" data-action="increment"
+                  data-bonus-id="${bonusId}" data-req-id="${req.id}" aria-label="Increase">+</button>
+        </div>`;
+      break;
+
+    case 'minimum_balance':
+      progressHtml = `
+        <div class="req-progress-text">${formatCurrency(req.currentProgress)} / ${formatCurrency(req.targetAmount)}</div>
+        <input type="number" class="req-balance-input" value="${req.currentProgress}" min="0" step="0.01"
+               data-action="balance-change" data-bonus-id="${bonusId}" data-req-id="${req.id}"
+               aria-label="Current balance" placeholder="Current balance">`;
+      break;
+  }
+
+  return `
+    <div class="requirement-block ${completedClass}">
+      <div class="req-header">
+        <span class="req-description">${escapeHtml(req.description)}</span>
+        <input type="checkbox" class="req-checkbox" ${req.completed ? 'checked' : ''}
+               data-action="toggle-req" data-bonus-id="${bonusId}" data-req-id="${req.id}"
+               aria-label="Mark complete">
+      </div>
+      ${progressHtml}
+    </div>`;
+}
+
 function renderExpandedContent(bonus) {
-  return '<p style="padding:12px;color:#8e8e93">Loading…</p>';
+  const allCompleted = bonus.requirements.length > 0 && bonus.requirements.every(r => r.completed);
+
+  let html = `<hr class="expanded-divider">
+    <div class="expanded-details">
+      <div class="detail-row">
+        <span class="detail-label">Date Opened</span>
+        <span class="detail-value">${formatDate(bonus.dateOpened)}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Bonus Amount</span>
+        <span class="detail-value">${formatCurrency(bonus.bonusAmount)}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Deadline</span>
+        <span class="detail-value">${formatDate(bonus.bonusDeadline)}</span>
+      </div>`;
+
+  if (bonus.accountCloseDate) {
+    html += `
+      <div class="detail-row">
+        <span class="detail-label">Account Close Date</span>
+        <span class="detail-value">${formatDate(bonus.accountCloseDate)}</span>
+      </div>`;
+  }
+
+  if (bonus.minimumOpenLength && bonus.minimumOpenLength.value > 0) {
+    html += `
+      <div class="detail-row">
+        <span class="detail-label">Min. Open Length</span>
+        <span class="detail-value">${bonus.minimumOpenLength.value} ${escapeHtml(bonus.minimumOpenLength.unit)}</span>
+      </div>`;
+    if (bonus.earlyTerminationFee != null) {
+      html += `
+        <div class="detail-row">
+          <span class="detail-label">Early Termination Fee</span>
+          <span class="detail-value">${formatCurrency(bonus.earlyTerminationFee)}</span>
+        </div>`;
+    }
+  }
+
+  if (bonus.minimumBalanceRequirement != null) {
+    html += `
+      <div class="detail-row">
+        <span class="detail-label">Min. Balance Req.</span>
+        <span class="detail-value">${formatCurrency(bonus.minimumBalanceRequirement)}</span>
+      </div>`;
+  }
+
+  html += '</div>';
+
+  if (bonus.notes) {
+    html += `<div class="notes-block">${escapeHtml(bonus.notes)}</div>`;
+  }
+
+  // Requirement blocks
+  if (bonus.requirements.length > 0) {
+    html += bonus.requirements.map(req => renderRequirementBlock(req, bonus.id)).join('');
+  }
+
+  // Deposit dates
+  html += renderDepositDates(bonus);
+
+  // Mark Complete / Reactivate
+  if (bonus.status === 'active' && allCompleted) {
+    html += `<button class="btn-mark-complete" data-action="mark-complete" data-id="${bonus.id}">
+      ✓ Mark Complete
+    </button>`;
+  } else if (bonus.status === 'completed') {
+    html += `<button class="btn-reactivate" data-action="reactivate" data-id="${bonus.id}">
+      Move Back to Active
+    </button>`;
+  }
+
+  // Edit / Delete
+  html += `
+    <div class="card-actions">
+      <button class="btn-secondary" data-action="edit" data-id="${bonus.id}">Edit</button>
+      <button class="btn-danger" data-action="delete" data-id="${bonus.id}">Delete</button>
+    </div>`;
+
+  return html;
 }
 
 // === Main Render ===
