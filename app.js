@@ -522,9 +522,191 @@ completedToggle.addEventListener('click', () => {
   completedToggle.setAttribute('aria-expanded', isCollapsed ? 'true' : 'false');
 });
 
-// Placeholder — will be replaced in Task 7
-function openEditForm(bonusId) {
-  console.warn('openEditForm not yet implemented', bonusId);
+// === Modal ===
+function openModal() {
+  modalOverlay.hidden = false;
+  // Force reflow for CSS transition
+  modalOverlay.offsetHeight;
+  modalOverlay.classList.add('visible');
+  document.body.style.overflow = 'hidden';
 }
+
+function closeModal() {
+  modalOverlay.classList.remove('visible');
+  document.body.style.overflow = '';
+  setTimeout(() => {
+    modalOverlay.hidden = true;
+    bonusForm.reset();
+    requirementsList.innerHTML = '';
+    editingBonusId = null;
+    etfRow.hidden = true;
+  }, 300);
+}
+
+modalCloseBtn.addEventListener('click', closeModal);
+formCancel.addEventListener('click', closeModal);
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) closeModal();
+});
+
+// Hide/show ETF field based on open length
+openLengthInput.addEventListener('input', () => {
+  const val = Number(openLengthInput.value) || 0;
+  etfRow.hidden = val <= 0;
+});
+
+// === Add New button ===
+addNewBtn.addEventListener('click', () => {
+  editingBonusId = null;
+  modalTitle.textContent = 'Add New Bonus';
+  bonusForm.reset();
+  requirementsList.innerHTML = '';
+  etfRow.hidden = true;
+  openModal();
+});
+
+// === Requirement Rows ===
+function addRequirementRow(existing = null) {
+  const row = document.createElement('div');
+  row.className = 'requirement-form-row';
+  const reqId = existing?.id || generateId();
+
+  row.innerHTML = `
+    <button type="button" class="btn-remove-req" aria-label="Remove requirement">&times;</button>
+    <input type="hidden" name="req-id" value="${reqId}">
+    <label>
+      Type
+      <select name="req-type">
+        <option value="direct_deposit_total" ${existing?.type === 'direct_deposit_total' ? 'selected' : ''}>Direct Deposit (Total $)</option>
+        <option value="direct_deposit_count" ${existing?.type === 'direct_deposit_count' ? 'selected' : ''}>Direct Deposit (Count)</option>
+        <option value="debit_transactions" ${existing?.type === 'debit_transactions' ? 'selected' : ''}>Debit Transactions</option>
+        <option value="minimum_balance" ${existing?.type === 'minimum_balance' ? 'selected' : ''}>Minimum Balance</option>
+      </select>
+    </label>
+    <label>
+      Description
+      <input type="text" name="req-description" required placeholder="e.g. $4,000 in direct deposits"
+             value="${existing ? escapeHtml(existing.description) : ''}">
+    </label>
+    <label>
+      Target Amount
+      <input type="number" name="req-target" min="0" step="1" required placeholder="e.g. 4000"
+             value="${existing?.targetAmount ?? ''}">
+    </label>
+    <label>
+      Min. Per Unit ($) <small style="font-weight:400">(optional, for count types)</small>
+      <input type="number" name="req-perUnit" min="0" step="1" placeholder="Leave blank if N/A"
+             value="${existing?.perUnitMinimum ?? ''}">
+    </label>
+  `;
+
+  row.querySelector('.btn-remove-req').addEventListener('click', () => row.remove());
+  requirementsList.appendChild(row);
+}
+
+addRequirementBtn.addEventListener('click', () => addRequirementRow());
+
+// === Open Edit Form ===
+function openEditForm(bonusId) {
+  const bonus = bonuses.find(b => b.id === bonusId);
+  if (!bonus) return;
+
+  editingBonusId = bonusId;
+  modalTitle.textContent = 'Edit Bonus';
+
+  document.getElementById('f-bankName').value = bonus.bankName;
+  document.getElementById('f-dateOpened').value = bonus.dateOpened;
+  document.getElementById('f-bonusAmount').value = bonus.bonusAmount;
+  document.getElementById('f-bonusDeadline').value = bonus.bonusDeadline;
+  document.getElementById('f-accountCloseDate').value = bonus.accountCloseDate || '';
+  document.getElementById('f-notes').value = bonus.notes || '';
+
+  if (bonus.minimumOpenLength && bonus.minimumOpenLength.value > 0) {
+    openLengthInput.value = bonus.minimumOpenLength.value;
+    document.getElementById('f-openLengthUnit').value = bonus.minimumOpenLength.unit;
+    etfRow.hidden = false;
+    document.getElementById('f-earlyTermFee').value = bonus.earlyTerminationFee ?? '';
+  } else {
+    openLengthInput.value = '';
+    etfRow.hidden = true;
+  }
+
+  const minBal = document.getElementById('f-minBalance');
+  minBal.value = bonus.minimumBalanceRequirement != null ? bonus.minimumBalanceRequirement : '';
+
+  requirementsList.innerHTML = '';
+  bonus.requirements.forEach(req => addRequirementRow(req));
+
+  openModal();
+}
+
+// === Form Submission ===
+bonusForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const openLenVal = Number(openLengthInput.value) || 0;
+  const openLenUnit = document.getElementById('f-openLengthUnit').value;
+  const minBalStr = document.getElementById('f-minBalance').value;
+
+  // Gather requirements
+  const reqRows = requirementsList.querySelectorAll('.requirement-form-row');
+  const existingBonus = editingBonusId ? bonuses.find(b => b.id === editingBonusId) : null;
+
+  const requirements = Array.from(reqRows).map(row => {
+    const reqId = row.querySelector('[name="req-id"]').value;
+    const type = row.querySelector('[name="req-type"]').value;
+    const description = row.querySelector('[name="req-description"]').value.trim();
+    const targetAmount = Number(row.querySelector('[name="req-target"]').value);
+    const perUnitVal = row.querySelector('[name="req-perUnit"]').value;
+
+    // Preserve progress and completed state when editing
+    const existingReq = existingBonus?.requirements.find(r => r.id === reqId);
+
+    return {
+      id: reqId,
+      type,
+      description,
+      targetAmount,
+      currentProgress: existingReq?.currentProgress ?? 0,
+      perUnitMinimum: perUnitVal !== '' ? Number(perUnitVal) : null,
+      completed: existingReq?.completed ?? false
+    };
+  });
+
+  const bonus = {
+    id: editingBonusId || generateId(),
+    bankName: document.getElementById('f-bankName').value.trim(),
+    dateOpened: document.getElementById('f-dateOpened').value,
+    bonusAmount: Number(document.getElementById('f-bonusAmount').value),
+    bonusDeadline: document.getElementById('f-bonusDeadline').value,
+    accountCloseDate: document.getElementById('f-accountCloseDate').value || '',
+    minimumOpenLength: openLenVal > 0 ? { value: openLenVal, unit: openLenUnit } : null,
+    earlyTerminationFee: openLenVal > 0
+      ? (document.getElementById('f-earlyTermFee').value !== ''
+          ? Number(document.getElementById('f-earlyTermFee').value)
+          : null)
+      : null,
+    minimumBalanceRequirement: minBalStr !== '' ? Number(minBalStr) : null,
+    notes: document.getElementById('f-notes').value.trim(),
+    requirements,
+    directDepositDates: existingBonus?.directDepositDates ?? [],
+    status: existingBonus?.status ?? 'active',
+    createdAt: existingBonus?.createdAt ?? new Date().toISOString()
+  };
+
+  await save(bonus);
+
+  // Update local state
+  const idx = bonuses.findIndex(b => b.id === bonus.id);
+  if (idx >= 0) {
+    bonuses[idx] = bonus;
+  } else {
+    bonuses.push(bonus);
+  }
+
+  closeModal();
+  expandedCardId = null;
+  render();
+});
 
 init();
