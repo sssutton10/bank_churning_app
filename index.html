@@ -9,6 +9,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+  <meta name="theme-color" content="#007aff">
   <title>Bank Bonus Tracker</title>
 </head>
 <body>
@@ -21,24 +22,26 @@
     <section id="active-section">
       <h2 class="section-title">Active</h2>
       <div id="active-cards" class="card-list"></div>
-      <p id="active-empty" class="empty-state" hidden>No active bonuses. Tap "+ Add New" to get started.</p>
+      <p id="active-empty" class="empty-state" hidden aria-live="polite">No active bonuses. Tap "+ Add New" to get started.</p>
     </section>
 
     <section id="completed-section" hidden>
-      <button id="completed-toggle" class="section-toggle">
+      <div class="section-toggle-wrapper">
         <h2 class="section-title">Completed</h2>
-        <span class="toggle-arrow">▼</span>
-      </button>
+        <button id="completed-toggle" class="section-toggle" aria-expanded="true" aria-controls="completed-cards">
+          <span class="toggle-arrow">▼</span>
+        </button>
+      </div>
       <div id="completed-cards" class="card-list"></div>
     </section>
   </main>
 
   <!-- Add/Edit Modal -->
   <div id="modal-overlay" class="modal-overlay" hidden>
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-header">
         <h2 id="modal-title">Add New Bonus</h2>
-        <button id="modal-close" class="btn-icon">&times;</button>
+        <button id="modal-close" class="btn-icon" aria-label="Close">&times;</button>
       </div>
       <form id="bonus-form" class="bonus-form">
         <label>
