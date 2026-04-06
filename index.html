@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="BonusTracker">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <title>Bank Bonus Tracker</title>
+</head>
+<body>
+  <header class="app-header">
+    <h1>Bank Bonus Tracker</h1>
+    <button id="add-new-btn" class="btn-primary">+ Add New</button>
+  </header>
+
+  <main id="app">
+    <section id="active-section">
+      <h2 class="section-title">Active</h2>
+      <div id="active-cards" class="card-list"></div>
+      <p id="active-empty" class="empty-state" hidden>No active bonuses. Tap "+ Add New" to get started.</p>
+    </section>
+
+    <section id="completed-section" hidden>
+      <button id="completed-toggle" class="section-toggle">
+        <h2 class="section-title">Completed</h2>
+        <span class="toggle-arrow">▼</span>
+      </button>
+      <div id="completed-cards" class="card-list"></div>
+    </section>
+  </main>
+
+  <!-- Add/Edit Modal -->
+  <div id="modal-overlay" class="modal-overlay" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Add New Bonus</h2>
+        <button id="modal-close" class="btn-icon">&times;</button>
+      </div>
+      <form id="bonus-form" class="bonus-form">
+        <label>
+          Bank Name *
+          <input type="text" id="f-bankName" required>
+        </label>
+        <label>
+          Date Opened *
+          <input type="date" id="f-dateOpened" required>
+        </label>
+        <label>
+          Bonus Amount ($) *
+          <input type="number" id="f-bonusAmount" min="0" step="1" required>
+        </label>
+        <label>
+          Bonus Deadline *
+          <input type="date" id="f-bonusDeadline" required>
+        </label>
+        <label>
+          Account Close Date
+          <input type="date" id="f-accountCloseDate">
+        </label>
+
+        <fieldset class="optional-fields">
+          <legend>Optional Details</legend>
+          <div class="open-length-row">
+            <label>
+              Min. Account Open Length
+              <input type="number" id="f-openLengthValue" min="0" step="1" placeholder="0">
+            </label>
+            <label>
+              Unit
+              <select id="f-openLengthUnit">
+                <option value="months">Months</option>
+                <option value="weeks">Weeks</option>
+              </select>
+            </label>
+          </div>
+          <div id="etf-row" hidden>
+            <label>
+              Early Termination Fee ($)
+              <input type="number" id="f-earlyTermFee" min="0" step="0.01">
+            </label>
+          </div>
+          <label>
+            Min. Balance Requirement ($)
+            <input type="number" id="f-minBalance" min="0" step="0.01" placeholder="Leave blank if none">
+          </label>
+          <label>
+            Notes
+            <textarea id="f-notes" rows="3" placeholder="Any additional notes..."></textarea>
+          </label>
+        </fieldset>
+
+        <fieldset class="requirements-fieldset">
+          <legend>Requirements</legend>
+          <div id="requirements-list"></div>
+          <button type="button" id="add-requirement-btn" class="btn-secondary">+ Add Requirement</button>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="button" id="form-cancel" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
