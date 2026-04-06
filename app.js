@@ -294,7 +294,14 @@ function render() {
 
 // === Init ===
 async function init() {
-  bonuses = await getAll();
+  try {
+    bonuses = await getAll();
+  } catch (err) {
+    console.error('[DB] Failed to load bonuses:', err);
+    document.getElementById('active-cards').innerHTML =
+      '<p style="padding:20px;color:#ff3b30;text-align:center">Could not load data. Please check that your browser supports IndexedDB and is not in private mode.</p>';
+    return;
+  }
   render();
 }
 
@@ -447,17 +454,27 @@ document.getElementById('app').addEventListener('click', async (e) => {
 
   if (action === 'remove-deposit-date') {
     const bId = actionEl.dataset.bonusId;
-    const index = Number(actionEl.dataset.index);
+    const sortedIndex = Number(actionEl.dataset.index);
     const bonus = bonuses.find(b => b.id === bId);
     if (bonus) {
+      // Build sorted list, find the target date value
       const sorted = [...bonus.directDepositDates].sort();
-      const dateToRemove = sorted[index];
-      const origIndex = bonus.directDepositDates.indexOf(dateToRemove);
-      if (origIndex > -1) {
-        bonus.directDepositDates.splice(origIndex, 1);
-        await save(bonus);
-        render();
+      const targetDate = sorted[sortedIndex];
+      // Count how many times this date appears before sortedIndex in the sorted array
+      const precedingCount = sorted.slice(0, sortedIndex).filter(d => d === targetDate).length;
+      // Remove the (precedingCount+1)th occurrence of targetDate from the original array
+      let occurrences = 0;
+      for (let i = 0; i < bonus.directDepositDates.length; i++) {
+        if (bonus.directDepositDates[i] === targetDate) {
+          if (occurrences === precedingCount) {
+            bonus.directDepositDates.splice(i, 1);
+            break;
+          }
+          occurrences++;
+        }
       }
+      await save(bonus);
+      render();
     }
     return;
   }

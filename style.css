@@ -220,6 +220,10 @@ body {
   border-left-color: var(--color-text-secondary);
 }
 
+.card-collapsed {
+  cursor: pointer;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
