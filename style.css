@@ -629,8 +629,15 @@ body {
   background: var(--color-card);
   color: var(--color-text);
   text-align: left;
+  text-align-last: left;
   -webkit-appearance: none;
   appearance: none;
+}
+
+.bonus-form input[type="date"] {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .bonus-form input:focus,
