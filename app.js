@@ -95,7 +95,6 @@ function renderCollapsedCard(bonus) {
 
   return `
     <div class="card ${dlClass} ${isExpanded ? 'expanded' : ''}" data-id="${bonus.id}">
-      <button class="btn-icon card-close-btn" data-action="close" aria-label="Close">&times;</button>
       <div class="card-collapsed" data-action="expand">
         <div class="card-header">
           <span class="card-bank-name">${escapeHtml(bonus.bankName)}</span>
@@ -195,8 +194,22 @@ function renderRequirementBlock(req, bonusId) {
 function renderExpandedContent(bonus) {
   const allCompleted = bonus.requirements.length > 0 && bonus.requirements.every(r => r.completed);
 
-  let html = `<hr class="expanded-divider">
+  const accountTypeLabel = {
+    personal_checking: 'Personal Checking',
+    personal_savings: 'Personal Savings',
+    business_checking: 'Business Checking'
+  }[bonus.accountType] || 'Personal Checking';
+
+  let html = `
+    <div class="card-close-btn">
+      <button class="btn-icon" data-action="close" aria-label="Close">&times;</button>
+    </div>
+    <hr class="expanded-divider">
     <div class="expanded-details">
+      <div class="detail-row">
+        <span class="detail-label">Account Type</span>
+        <span class="detail-value">${accountTypeLabel}</span>
+      </div>
       <div class="detail-row">
         <span class="detail-label">Date Opened</span>
         <span class="detail-value">${formatDate(bonus.dateOpened)}</span>
@@ -632,6 +645,7 @@ function openEditForm(bonusId) {
   modalTitle.textContent = 'Edit Bonus';
 
   document.getElementById('f-bankName').value = bonus.bankName;
+  document.getElementById('f-accountType').value = bonus.accountType || 'personal_checking';
   document.getElementById('f-dateOpened').value = bonus.dateOpened;
   document.getElementById('f-bonusAmount').value = bonus.bonusAmount;
   document.getElementById('f-bonusDeadline').value = bonus.bonusDeadline;
@@ -693,6 +707,7 @@ bonusForm.addEventListener('submit', async (e) => {
   const bonus = {
     id: editingBonusId || generateId(),
     bankName: document.getElementById('f-bankName').value.trim(),
+    accountType: document.getElementById('f-accountType').value,
     dateOpened: document.getElementById('f-dateOpened').value,
     bonusAmount: Number(document.getElementById('f-bonusAmount').value),
     bonusDeadline: document.getElementById('f-bonusDeadline').value,

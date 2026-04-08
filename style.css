@@ -282,14 +282,10 @@ body {
 }
 
 .card-close-btn {
-  display: none;
-  position: absolute;
-  top: 8px;
-  right: 8px;
-}
-
-.card.expanded .card-close-btn {
   display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 4px;
 }
 
 .expanded-details {
@@ -632,6 +628,7 @@ body {
   margin-top: 4px;
   background: var(--color-card);
   color: var(--color-text);
+  text-align: left;
   -webkit-appearance: none;
   appearance: none;
 }
