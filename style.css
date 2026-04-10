@@ -173,6 +173,10 @@ body {
   transform: rotate(-90deg);
 }
 
+.card-list[hidden] {
+  display: none;
+}
+
 .card-list {
   padding: 0 16px 16px;
   display: flex;
