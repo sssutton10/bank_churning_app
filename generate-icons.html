@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Generate Icons</title>
+  <style>
+    body { font-family: sans-serif; padding: 40px; background: #f2f2f7; }
+    h1 { margin-bottom: 8px; }
+    p { color: #666; margin-bottom: 24px; }
+    canvas { display: none; }
+    .btn {
+      display: inline-block; background: #007aff; color: #fff;
+      padding: 12px 24px; border-radius: 8px; text-decoration: none;
+      font-size: 16px; font-weight: 600; margin: 8px 8px 8px 0; cursor: pointer;
+      border: none;
+    }
+    .preview { display: flex; gap: 24px; align-items: flex-end; margin-bottom: 24px; }
+    .preview div { text-align: center; font-size: 13px; color: #666; }
+    .preview img { display: block; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  </style>
+</head>
+<body>
+  <h1>Bank Bonus Tracker — Icon Generator</h1>
+  <p>Click the buttons below to download the icons, then place them in your <code>icons/</code> folder.</p>
+
+  <div class="preview">
+    <div><img id="preview-192" width="96" height="96"><br>192×192</div>
+    <div><img id="preview-512" width="128" height="128"><br>512×512</div>
+  </div>
+
+  <button class="btn" onclick="download(192)">Download icon-192.png</button>
+  <button class="btn" onclick="download(512)">Download icon-512.png</button>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    function drawIcon(size) {
+      const canvas = document.getElementById('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, size);
+      grad.addColorStop(0, '#1a8cff');
+      grad.addColorStop(1, '#005ecc');
+      ctx.fillStyle = grad;
+
+      // Rounded rect background
+      const r = size * 0.22;
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(size - r, 0);
+      ctx.quadraticCurveTo(size, 0, size, r);
+      ctx.lineTo(size, size - r);
+      ctx.quadraticCurveTo(size, size, size - r, size);
+      ctx.lineTo(r, size);
+      ctx.quadraticCurveTo(0, size, 0, size - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Dollar sign
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${Math.round(size * 0.52)}px -apple-system, BlinkMacSystemFont, Arial, sans-serif`;
+      ctx.fillText('$', size / 2, size / 2 + size * 0.03);
+
+      return canvas.toDataURL('image/png');
+    }
+
+    function download(size) {
+      const dataUrl = drawIcon(size);
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `icon-${size}.png`;
+      a.click();
+    }
+
+    // Show previews on load
+    window.onload = () => {
+      document.getElementById('preview-192').src = drawIcon(192);
+      document.getElementById('preview-512').src = drawIcon(512);
+    };
+  </script>
+</body>
+</html>
