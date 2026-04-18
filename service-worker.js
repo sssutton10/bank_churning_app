@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bonus-tracker-v2';
+const CACHE_NAME = 'bonus-tracker-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -35,18 +35,39 @@ self.addEventListener('activate', (e) => {
 // Fetch — cache-first with background update
 self.addEventListener('fetch', (e) => {
   // Only handle same-origin GET requests
-  if (e.request.method !== 'GET') return;
+  const requestUrl = new URL(e.request.url);
+  if (e.request.method !== 'GET' || requestUrl.origin !== self.location.origin) return;
 
   e.respondWith(
     caches.match(e.request).then(cached => {
-      const fetchPromise = fetch(e.request).then(response => {
+      const fetchPromise = fetch(e.request);
+      const cacheUpdatePromise = fetchPromise.then(response => {
         if (response.ok) {
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, response.clone()));
+          const responseCopy = response.clone();
+          return caches.open(CACHE_NAME)
+            .then(cache => cache.put(e.request, responseCopy))
+            .then(() => response);
         }
         return response;
-      }).catch(() => null);
+      });
 
-      return cached || fetchPromise;
+      if (cached) {
+        e.waitUntil(cacheUpdatePromise.catch(() => undefined));
+        return cached;
+      }
+
+      return cacheUpdatePromise.catch(async () => {
+        if (e.request.mode === 'navigate') {
+          const fallback = await caches.match('./index.html');
+          if (fallback) return fallback;
+        }
+
+        return new Response('Offline', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      });
     })
   );
 });

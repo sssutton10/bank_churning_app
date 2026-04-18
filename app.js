@@ -51,6 +51,82 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function normalizeRequirement(req = {}) {
+  return {
+    ...req,
+    id: req.id || generateId(),
+    type: req.type || 'direct_deposit_total',
+    description: req.description || '',
+    targetAmount: Number(req.targetAmount) || 0,
+    currentProgress: Number(req.currentProgress) || 0,
+    perUnitMinimum: req.perUnitMinimum != null ? Number(req.perUnitMinimum) : null,
+    completed: Boolean(req.completed)
+  };
+}
+
+function normalizeBonus(bonus = {}) {
+  const minimumOpenLength = bonus.minimumOpenLength && Number(bonus.minimumOpenLength.value) > 0
+    ? {
+        value: Number(bonus.minimumOpenLength.value),
+        unit: bonus.minimumOpenLength.unit === 'weeks' ? 'weeks' : 'months'
+      }
+    : null;
+
+  return {
+    ...bonus,
+    id: bonus.id || generateId(),
+    bankName: bonus.bankName || '',
+    accountType: bonus.accountType || 'personal_checking',
+    dateOpened: bonus.dateOpened || '',
+    bonusAmount: Number(bonus.bonusAmount) || 0,
+    bonusDeadline: bonus.bonusDeadline || '',
+    accountCloseDate: bonus.accountCloseDate || '',
+    minimumOpenLength,
+    earlyTerminationFee: bonus.earlyTerminationFee != null ? Number(bonus.earlyTerminationFee) : null,
+    minimumBalanceRequirement: bonus.minimumBalanceRequirement != null ? Number(bonus.minimumBalanceRequirement) : null,
+    notes: bonus.notes || '',
+    requirements: Array.isArray(bonus.requirements) ? bonus.requirements.map(normalizeRequirement) : [],
+    directDepositDates: Array.isArray(bonus.directDepositDates)
+      ? bonus.directDepositDates.filter(d => typeof d === 'string' && d)
+      : [],
+    status: bonus.status === 'completed' ? 'completed' : 'active',
+    createdAt: bonus.createdAt || new Date().toISOString()
+  };
+}
+
+async function reloadBonuses() {
+  bonuses = (await getAll()).map(normalizeBonus);
+  expandedCardId = null;
+  render();
+}
+
+async function persistBonus(bonus) {
+  try {
+    await save(bonus);
+    return true;
+  } catch (err) {
+    console.error('[DB] Failed to save bonus:', err);
+    alert('Could not save that change. The app will reload your stored data.');
+    try {
+      await reloadBonuses();
+    } catch (reloadErr) {
+      console.error('[DB] Failed to reload bonuses:', reloadErr);
+    }
+    return false;
+  }
+}
+
+async function removeBonus(id) {
+  try {
+    await deleteById(id);
+    return true;
+  } catch (err) {
+    console.error('[DB] Failed to delete bonus:', err);
+    alert('Could not delete that bonus. Your stored data was not changed.');
+    return false;
+  }
+}
+
 function requirementSummary(req) {
   switch (req.type) {
     case 'direct_deposit_total':
@@ -63,7 +139,7 @@ function requirementSummary(req) {
     case 'minimum_balance':
       return `${formatCurrency(req.currentProgress)}/${formatCurrency(req.targetAmount)} balance`;
     default:
-      return req.description;
+      return escapeHtml(req.description);
   }
 }
 
@@ -308,7 +384,7 @@ function render() {
 // === Init ===
 async function init() {
   try {
-    bonuses = await getAll();
+    bonuses = (await getAll()).map(normalizeBonus);
   } catch (err) {
     console.error('[DB] Failed to load bonuses:', err);
     document.getElementById('active-cards').innerHTML =
@@ -360,7 +436,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
     const bonus = bonuses.find(b => b.id === bonusId);
     if (bonus) {
       bonus.status = 'completed';
-      await save(bonus);
+      if (!(await persistBonus(bonus))) return;
       expandedCardId = null;
       render();
     }
@@ -371,7 +447,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
     const bonus = bonuses.find(b => b.id === bonusId);
     if (bonus) {
       bonus.status = 'active';
-      await save(bonus);
+      if (!(await persistBonus(bonus))) return;
       expandedCardId = null;
       render();
     }
@@ -380,7 +456,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
 
   if (action === 'delete') {
     if (confirm('Delete this bonus? This cannot be undone.')) {
-      await deleteById(bonusId);
+      if (!(await removeBonus(bonusId))) return;
       bonuses = bonuses.filter(b => b.id !== bonusId);
       if (expandedCardId === bonusId) expandedCardId = null;
       render();
@@ -400,7 +476,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
     const req = bonus?.requirements.find(r => r.id === reqId);
     if (req && req.currentProgress < req.targetAmount) {
       req.currentProgress++;
-      await save(bonus);
+      if (!(await persistBonus(bonus))) return;
       render();
     }
     return;
@@ -413,7 +489,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
     const req = bonus?.requirements.find(r => r.id === reqId);
     if (req && req.currentProgress > 0) {
       req.currentProgress--;
-      await save(bonus);
+      if (!(await persistBonus(bonus))) return;
       render();
     }
     return;
@@ -429,7 +505,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
       if (val !== null) {
         const num = Math.max(0, Math.min(req.targetAmount, parseFloat(val) || 0));
         req.currentProgress = num;
-        await save(bonus);
+        if (!(await persistBonus(bonus))) return;
         render();
       }
     }
@@ -443,7 +519,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
     const req = bonus?.requirements.find(r => r.id === reqId);
     if (req) {
       req.completed = actionEl.checked;
-      await save(bonus);
+      if (!(await persistBonus(bonus))) return;
       render();
     }
     return;
@@ -456,7 +532,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
       const date = prompt('Deposit date (YYYY-MM-DD):', today);
       if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
         bonus.directDepositDates.push(date);
-        await save(bonus);
+        if (!(await persistBonus(bonus))) return;
         render();
       } else if (date) {
         alert('Please enter a date in YYYY-MM-DD format.');
@@ -486,7 +562,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
           occurrences++;
         }
       }
-      await save(bonus);
+      if (!(await persistBonus(bonus))) return;
       render();
     }
     return;
@@ -521,7 +597,7 @@ document.getElementById('app').addEventListener('change', async (e) => {
   if (target.dataset.action === 'slider-change') {
     const bId = target.dataset.bonusId;
     const bonus = bonuses.find(b => b.id === bId);
-    if (bonus) await save(bonus);
+    if (bonus) await persistBonus(bonus);
     return;
   }
 
@@ -537,7 +613,7 @@ document.getElementById('app').addEventListener('change', async (e) => {
         const progressText = block.querySelector('.req-progress-text');
         if (progressText) progressText.textContent = `${formatCurrency(req.currentProgress)} / ${formatCurrency(req.targetAmount)}`;
       }
-      await save(bonus);
+      await persistBonus(bonus);
     }
     return;
   }
@@ -726,7 +802,7 @@ bonusForm.addEventListener('submit', async (e) => {
     createdAt: existingBonus?.createdAt ?? new Date().toISOString()
   };
 
-  await save(bonus);
+  if (!(await persistBonus(bonus))) return;
 
   // Update local state
   const idx = bonuses.findIndex(b => b.id === bonus.id);
