@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f1923;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a2e40;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="buildingGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a4a6b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a3050;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="roofGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3a6090;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2a4a6b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00e5a0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00c4ff;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0c040;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c8952a;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+
+  <!-- Subtle grid -->
+  <g opacity="0.06" stroke="#00e5a0" stroke-width="1">
+    <line x1="0" y1="128" x2="512" y2="128"/>
+    <line x1="0" y1="256" x2="512" y2="256"/>
+    <line x1="0" y1="384" x2="512" y2="384"/>
+    <line x1="128" y1="0" x2="128" y2="512"/>
+    <line x1="256" y1="0" x2="256" y2="512"/>
+    <line x1="384" y1="0" x2="384" y2="512"/>
+  </g>
+
+  <!-- ============================== -->
+  <!-- BANK BUILDING (compact, centered) -->
+  <!-- Wrapped in transform to scale up and re-center on canvas -->
+  <!-- ============================== -->
+  <g transform="translate(256 256) scale(1.35) translate(-256 -300)">
+
+  <!-- Bank building wrapped in extra scale transform to make it more visible -->
+  <g transform="translate(256 308) scale(1.18) translate(-256 -308)">
+
+  <!-- Building body -->
+  <rect x="186" y="290" width="140" height="92" rx="3" fill="url(#buildingGrad)" filter="url(#shadow)"/>
+
+  <!-- Pediment / triangular roof -->
+  <polygon points="170,290 256,218 342,290" fill="url(#roofGrad)" filter="url(#shadow)"/>
+  <polygon points="200,288 256,242 312,288" fill="#1e3a55" opacity="0.5"/>
+
+  <!-- Entablature -->
+  <rect x="174" y="286" width="164" height="12" rx="2" fill="#2a4a6b"/>
+
+  <!-- Columns -->
+  <rect x="196" y="298" width="14" height="80" rx="3" fill="#1e3a55"/>
+  <rect x="222" y="298" width="14" height="80" rx="3" fill="#1e3a55"/>
+  <rect x="248" y="298" width="14" height="80" rx="3" fill="#1e3a55"/>
+  <rect x="274" y="298" width="14" height="80" rx="3" fill="#1e3a55"/>
+  <rect x="300" y="298" width="14" height="80" rx="3" fill="#1e3a55"/>
+
+  <!-- Column caps -->
+  <rect x="193" y="296" width="20" height="5" rx="1" fill="#3a6090"/>
+  <rect x="219" y="296" width="20" height="5" rx="1" fill="#3a6090"/>
+  <rect x="245" y="296" width="20" height="5" rx="1" fill="#3a6090"/>
+  <rect x="271" y="296" width="20" height="5" rx="1" fill="#3a6090"/>
+  <rect x="297" y="296" width="20" height="5" rx="1" fill="#3a6090"/>
+
+  <!-- Steps -->
+  <rect x="174" y="378" width="164" height="7" rx="2" fill="#233d58"/>
+  <rect x="162" y="384" width="188" height="7" rx="2" fill="#1e3552"/>
+  <rect x="150" y="390" width="212" height="8" rx="2" fill="#192e48"/>
+
+  <!-- Door -->
+  <rect x="238" y="338" width="36" height="40" rx="4" fill="#0f1923"/>
+  <rect x="240" y="340" width="14" height="36" rx="2" fill="#0d1720"/>
+  <rect x="258" y="340" width="14" height="36" rx="2" fill="#0d1720"/>
+  <ellipse cx="247" cy="343" rx="7" ry="5" fill="#1a3050"/>
+  <ellipse cx="265" cy="343" rx="7" ry="5" fill="#1a3050"/>
+
+  <!-- Dollar sign on pediment -->
+  <text x="256" y="278" font-family="Georgia, serif" font-size="30" font-weight="bold"
+        fill="url(#goldGrad)" text-anchor="middle" dominant-baseline="middle"
+        filter="url(#softGlow)">$</text>
+
+  </g>
+
+  <!-- ============================== -->
+  <!-- CIRCULAR CHURN ARROWS -->
+  <!-- Circle: center (256, 300), radius 175 -->
+  <!-- Two clockwise arcs, with gaps at top and bottom -->
+  <!-- ============================== -->
+
+  <!-- TOP-RIGHT ARC: from top (256,125) clockwise to right-bottom (388,418) -->
+  <g filter="url(#glow)">
+    <path d="M 256,125 A 175,175 0 0,1 388,418"
+          fill="none" stroke="url(#arrowGrad)" stroke-width="13" stroke-linecap="butt"/>
+    <!-- Large pointed arrowhead: base at arc end (388,418), tip extends forward along tangent -->
+    <!-- Tangent direction at end: (-0.674, 0.755). Tip 28 ahead, base width 32 (±16 perpendicular) -->
+    <polygon points="369.1,439.1 375.9,407.2 400.1,428.8"
+             fill="#00c4ff" stroke="#00c4ff" stroke-width="1" stroke-linejoin="round"/>
+  </g>
+
+  <!-- BOTTOM-LEFT ARC: from bottom (256,475) clockwise to left-top (124,182) -->
+  <g filter="url(#glow)">
+    <path d="M 256,475 A 175,175 0 0,1 124,182"
+          fill="none" stroke="url(#arrowGrad)" stroke-width="13" stroke-linecap="butt"/>
+    <!-- Tangent at end: (0.674, -0.755). Tip 28 ahead, base width 32 -->
+    <polygon points="142.9,160.9 136.1,192.8 111.9,171.2"
+             fill="#00e5a0" stroke="#00e5a0" stroke-width="1" stroke-linejoin="round"/>
+  </g>
+
+  </g>
+</svg>
