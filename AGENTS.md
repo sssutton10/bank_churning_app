@@ -1,30 +1,30 @@
 # Bank Bonus Tracker
 
-A vanilla HTML/CSS/JS Progressive Web App (PWA) for tracking bank account sign-up bonuses. Fully offline, all data stored on-device via IndexedDB. No frameworks, no build tools, no dependencies.
+A Flask web application for tracking bank account sign-up bonuses with a SQLite database backend. All data is stored server-side. No frameworks, no build tools, no dependencies.
 
 ## Tech Stack
 
 - **Frontend:** Vanilla HTML5, CSS3, JavaScript (ES modules)
-- **Storage:** IndexedDB (via `db.js` wrapper)
-- **Offline:** Service Worker (`service-worker.js`) with cache-first strategy
-- **Hosting:** GitHub Pages
+- **Backend:** Python Flask framework
+- **Storage:** SQLite database (via SQLAlchemy)
+- **Hosting:** GitHub Pages (with server-side deployment)
 - **Target device:** iPhone (375px), iOS Safari
 
 ## Local Development
 
-No build step required. Serve the project root over HTTP (required for ES modules and service workers):
+To run locally:
 
 ```bash
-# If Python is available
-python -m http.server 3000
+# Install dependencies
+pip install -r requirements.txt
 
-# If Node/npx is available
-npx serve .
+# Run the application
+python app.py
 ```
 
-Then open `http://localhost:3000` in a browser.
+Then open `http://localhost:5002` in a browser.
 
-**Note:** Service workers only work on `localhost` or HTTPS. Opening `index.html` directly as a file (`file://`) will not register the service worker or enable offline mode.
+**Note:** The Flask app runs on port 5002 by default, not the standard HTTP port.
 
 ## Deploy to GitHub Pages
 
@@ -55,6 +55,11 @@ Without this, users (including the home screen PWA on iPhone) will keep serving 
 | `style.css` | All styles — iOS-inspired, mobile-first, CSS variables |
 | `db.js` | IndexedDB wrapper — `getAll()`, `getById()`, `save()`, `deleteById()` |
 | `app.js` | All app logic — rendering, events, form, progress tracking |
+| `app.py` | Flask application entry point with API endpoints |
+| `db.py` | Database models and operations using SQLAlchemy |
+| `scraper.py` | Data scraping functionality for bonus information |
+| `static/` | Static assets (JavaScript, CSS) |
+| `templates/` | HTML templates for Flask rendering |
 | `service-worker.js` | Offline caching (cache-first + background update) |
 | `manifest.json` | PWA metadata — name, icons, display mode |
 | `icons/` | App icons (192×192 and 512×512 PNG) |
@@ -65,7 +70,7 @@ Without this, users (including the home screen PWA on iPhone) will keep serving 
 ## Architecture
 
 `app.js` is a single ES module. State is two globals:
-- `bonuses` — array of all BankBonus objects (loaded from IndexedDB on init)
+- `bonuses` — array of all BankBonus objects (loaded from database on init)
 - `expandedCardId` — id of currently expanded card, or null
 
 Rendering is **full re-render on every change** — no virtual DOM. After any state mutation, call `render()` which rebuilds `#active-cards` and `#completed-cards` innerHTML.
@@ -118,7 +123,7 @@ Requirement {
 
 **XSS protection:** All user-provided strings rendered into HTML must go through `escapeHtml()` (defined in `app.js`). Numbers and dates are safe to render directly.
 
-**IndexedDB connection:** `db.js` caches the connection in `cachedDb` — only opens once per session.
+**Database connection:** `db.py` handles SQLAlchemy connections with proper session management.
 
 ## Gotchas
 
