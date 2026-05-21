@@ -726,6 +726,48 @@ body {
   justify-content: center;
 }
 
+/* === Tab Navigation === */
+.tab-btn {
+  text-decoration: none;
+  font-size: 13px;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tab-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.tab-btn.active:hover {
+  background: var(--color-primary-dark);
+}
+
+/* === Scraper Page === */
+.scraper-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 20px;
+}
+
+.scraper-source {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  padding: 0 20px 12px;
+}
+
+.scraper-source a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.scraper-source a:hover {
+  text-decoration: underline;
+}
+
 /* === Utility === */
 .visually-hidden {
   position: absolute;

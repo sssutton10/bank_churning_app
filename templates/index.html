@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+  <section id="active-section">
+    <h2 class="section-title">Active</h2>
+    <div id="active-cards" class="card-list"></div>
+    <p id="active-empty" class="empty-state" hidden aria-live="polite">No active bonuses. Tap "+ Add New" to get started.</p>
+  </section>
+
+  <section id="completed-section" hidden>
+    <div class="section-toggle-wrapper">
+      <h2 class="section-title">Completed</h2>
+      <button id="completed-toggle" class="section-toggle" aria-expanded="true" aria-controls="completed-cards">
+        <span class="toggle-arrow">▼</span>
+      </button>
+    </div>
+    <div id="completed-cards" class="card-list"></div>
+  </section>
+
+  <script id="initial-data" type="application/json">{{ initial_data_json | safe }}</script>
+{% endblock %}

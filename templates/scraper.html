@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+  <section id="scraper-section">
+    <div class="scraper-header">
+      <h2 class="section-title">Doctor of Credit Scraper</h2>
+      <button id="scrape-btn" class="btn-primary">Scrape Now</button>
+    </div>
+    <p class="scraper-source">
+      Source: <a href="https://www.doctorofcredit.com/best-bank-account-bonuses/" target="_blank" rel="noopener">doctorofcredit.com/best-bank-account-bonuses/</a>
+    </p>
+    <div id="scraper-loading" class="empty-state" hidden>Scraping... please wait.</div>
+    <div id="scraper-error" class="empty-state" hidden style="color:var(--color-danger);"></div>
+    <div id="scraper-results" class="card-list"></div>
+    <p id="scraper-empty" class="empty-state" hidden>Click "Scrape Now" to fetch the latest bonuses.</p>
+  </section>
+{% endblock %}

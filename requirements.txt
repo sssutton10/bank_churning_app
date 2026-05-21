@@ -1,0 +1,4 @@
+flask>=3.0
+flask-sqlalchemy>=3.1
+requests>=2.31
+beautifulsoup4>=4.12

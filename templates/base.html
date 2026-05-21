@@ -6,38 +6,22 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="BonusTracker">
-  <link rel="apple-touch-icon" href="icons/icon-churning.svg">
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
   <meta name="theme-color" content="#0f1923">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <title>Bank Bonus Tracker</title>
 </head>
 <body>
   <header class="app-header">
     <h1>Bank Bonus Tracker</h1>
     <div class="header-actions">
-      <button id="export-btn" class="btn-secondary" aria-label="Export data">Export</button>
-      <button id="import-btn" class="btn-secondary" aria-label="Import data">Import</button>
+      <a href="{{ url_for('index') }}" class="btn-secondary tab-btn {% if request.path == '/' %}active{% endif %}">Active</a>
+      <a href="{{ url_for('scraper_page') }}" class="btn-secondary tab-btn {% if request.path == '/scraper' %}active{% endif %}">Scraper</a>
       <button id="add-new-btn" class="btn-primary">+ Add New</button>
     </div>
   </header>
 
   <main id="app">
-    <section id="active-section">
-      <h2 class="section-title">Active</h2>
-      <div id="active-cards" class="card-list"></div>
-      <p id="active-empty" class="empty-state" hidden aria-live="polite">No active bonuses. Tap "+ Add New" to get started.</p>
-    </section>
-
-    <section id="completed-section" hidden>
-      <div class="section-toggle-wrapper">
-        <h2 class="section-title">Completed</h2>
-        <button id="completed-toggle" class="section-toggle" aria-expanded="true" aria-controls="completed-cards">
-          <span class="toggle-arrow">▼</span>
-        </button>
-      </div>
-      <div id="completed-cards" class="card-list"></div>
-    </section>
+    {% block content %}{% endblock %}
   </main>
 
   <!-- Add/Edit Modal -->
@@ -124,6 +108,6 @@
 
   <input type="file" id="import-file-input" accept=".json" class="visually-hidden">
 
-  <script type="module" src="app.js"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

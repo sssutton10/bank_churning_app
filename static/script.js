@@ -1,4 +1,27 @@
-import { getAll, save, deleteById } from './db.js';
+// === API Helpers ===
+async function apiGetAll() {
+  const res = await fetch('/api/bonuses');
+  if (!res.ok) throw new Error('Failed to fetch bonuses');
+  return res.json();
+}
+
+async function apiSave(bonus) {
+  const isNew = !bonus.id || !bonus.createdAt;
+  const url = isNew ? '/api/bonuses' : `/api/bonuses/${bonus.id}`;
+  const method = isNew ? 'POST' : 'PUT';
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bonus),
+  });
+  if (!res.ok) throw new Error('Failed to save bonus');
+  return res.json();
+}
+
+async function apiDelete(id) {
+  const res = await fetch(`/api/bonuses/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete bonus');
+}
 
 // === Export/Import ===
 function downloadJSON(data, filename) {
@@ -14,7 +37,7 @@ function downloadJSON(data, filename) {
 }
 
 async function handleExport() {
-  const data = await getAll();
+  const data = await apiGetAll();
   downloadJSON(data, `bonus-tracker-backup-${new Date().toISOString().split('T')[0]}.json`);
 }
 
@@ -29,13 +52,17 @@ async function handleImport(file) {
     if (!confirm(`Import ${imported.length} bonus record(s)? This will replace all current data.`)) {
       return;
     }
-    for (const bonus of imported) {
-      await save(normalizeBonus(bonus));
-    }
+    const res = await fetch('/api/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(imported),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Import failed');
     await reloadBonuses();
-    alert(`Imported ${imported.length} record(s) successfully.`);
+    alert(`Imported ${result.imported} record(s) successfully.`);
   } catch (err) {
-    alert('Error parsing file: ' + err.message);
+    alert('Error importing: ' + err.message);
   }
 }
 
@@ -88,12 +115,13 @@ function formatCurrency(n) {
 }
 
 function formatDate(dateStr) {
-  if (!dateStr) return '—';
+  if (!dateStr) return '\u2014';
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function normalizeRequirement(req = {}) {
+function normalizeRequirement(req) {
+  req = req || {};
   return {
     ...req,
     id: req.id || generateId(),
@@ -102,16 +130,14 @@ function normalizeRequirement(req = {}) {
     targetAmount: Number(req.targetAmount) || 0,
     currentProgress: Number(req.currentProgress) || 0,
     perUnitMinimum: req.perUnitMinimum != null ? Number(req.perUnitMinimum) : null,
-    completed: Boolean(req.completed)
+    completed: Boolean(req.completed),
   };
 }
 
-function normalizeBonus(bonus = {}) {
+function normalizeBonus(bonus) {
+  bonus = bonus || {};
   const minimumOpenLength = bonus.minimumOpenLength && Number(bonus.minimumOpenLength.value) > 0
-    ? {
-        value: Number(bonus.minimumOpenLength.value),
-        unit: bonus.minimumOpenLength.unit === 'weeks' ? 'weeks' : 'months'
-      }
+    ? { value: Number(bonus.minimumOpenLength.value), unit: bonus.minimumOpenLength.unit === 'weeks' ? 'weeks' : 'months' }
     : null;
 
   return {
@@ -128,43 +154,37 @@ function normalizeBonus(bonus = {}) {
     minimumBalanceRequirement: bonus.minimumBalanceRequirement != null ? Number(bonus.minimumBalanceRequirement) : null,
     notes: bonus.notes || '',
     requirements: Array.isArray(bonus.requirements) ? bonus.requirements.map(normalizeRequirement) : [],
-    directDepositDates: Array.isArray(bonus.directDepositDates)
-      ? bonus.directDepositDates.filter(d => typeof d === 'string' && d)
-      : [],
+    directDepositDates: Array.isArray(bonus.directDepositDates) ? bonus.directDepositDates.filter(d => typeof d === 'string' && d) : [],
     status: bonus.status === 'completed' ? 'completed' : 'active',
-    createdAt: bonus.createdAt || new Date().toISOString()
+    createdAt: bonus.createdAt || new Date().toISOString(),
   };
 }
 
 async function reloadBonuses() {
-  bonuses = (await getAll()).map(normalizeBonus);
+  bonuses = (await apiGetAll()).map(normalizeBonus);
   expandedCardId = null;
   render();
 }
 
 async function persistBonus(bonus) {
   try {
-    await save(bonus);
+    const saved = await apiSave(bonus);
+    Object.assign(bonus, saved);
     return true;
   } catch (err) {
-    console.error('[DB] Failed to save bonus:', err);
-    alert('Could not save that change. The app will reload your stored data.');
-    try {
-      await reloadBonuses();
-    } catch (reloadErr) {
-      console.error('[DB] Failed to reload bonuses:', reloadErr);
-    }
+    console.error('[API] Failed to save bonus:', err);
+    alert('Could not save that change.');
     return false;
   }
 }
 
 async function removeBonus(id) {
   try {
-    await deleteById(id);
+    await apiDelete(id);
     return true;
   } catch (err) {
-    console.error('[DB] Failed to delete bonus:', err);
-    alert('Could not delete that bonus. Your stored data was not changed.');
+    console.error('[API] Failed to delete bonus:', err);
+    alert('Could not delete that bonus.');
     return false;
   }
 }
@@ -185,7 +205,7 @@ function requirementSummary(req) {
   }
 }
 
-// === Card Rendering (Collapsed) ===
+// === Card Rendering ===
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -199,7 +219,7 @@ function renderCollapsedCard(bonus) {
   const dlClass = bonus.status === 'completed' ? 'completed-card' : deadlineClass(bonus.bonusDeadline);
   const completedReqs = bonus.requirements.filter(r => r.completed).length;
   const totalReqs = bonus.requirements.length;
-  const reqsSummary = bonus.requirements.map(requirementSummary).join(' · ');
+  const reqsSummary = bonus.requirements.map(requirementSummary).join(' \u00b7 ');
   const daysLeft = daysUntil(bonus.bonusDeadline);
   const deadlineText = bonus.status === 'completed'
     ? 'Completed'
@@ -218,7 +238,7 @@ function renderCollapsedCard(bonus) {
           <span class="card-bank-name">${escapeHtml(bonus.bankName)}</span>
           <span class="card-bonus-amount">${formatCurrency(bonus.bonusAmount)}</span>
         </div>
-        <div class="card-deadline">${deadlineText} — ${formatDate(bonus.bonusDeadline)}</div>
+        <div class="card-deadline">${deadlineText} \u2014 ${formatDate(bonus.bonusDeadline)}</div>
         <div class="card-requirements-summary">${reqsSummary || 'No requirements'}</div>
         <div class="card-progress">${completedReqs}/${totalReqs} requirements met</div>
       </div>
@@ -281,7 +301,7 @@ function renderRequirementBlock(req, bonusId) {
         }</div>
         <div class="req-increment-row">
           <button class="btn-decrement" data-action="decrement"
-                  data-bonus-id="${bonusId}" data-req-id="${req.id}" aria-label="Decrease">−</button>
+                  data-bonus-id="${bonusId}" data-req-id="${req.id}" aria-label="Decrease">\u2212</button>
           <span style="font-size:16px;font-weight:600;min-width:30px;text-align:center">${req.currentProgress}</span>
           <button class="btn-increment" data-action="increment"
                   data-bonus-id="${bonusId}" data-req-id="${req.id}" aria-label="Increase">+</button>
@@ -315,7 +335,7 @@ function renderExpandedContent(bonus) {
   const accountTypeLabel = {
     personal_checking: 'Personal Checking',
     personal_savings: 'Personal Savings',
-    business_checking: 'Business Checking'
+    business_checking: 'Business Checking',
   }[bonus.accountType] || 'Personal Checking';
 
   let html = `
@@ -378,18 +398,15 @@ function renderExpandedContent(bonus) {
     html += `<div class="notes-block">${escapeHtml(bonus.notes)}</div>`;
   }
 
-  // Requirement blocks
   if (bonus.requirements.length > 0) {
     html += bonus.requirements.map(req => renderRequirementBlock(req, bonus.id)).join('');
   }
 
-  // Deposit dates
   html += renderDepositDates(bonus);
 
-  // Mark Complete / Reactivate
   if (bonus.status === 'active' && allCompleted) {
     html += `<button class="btn-mark-complete" data-action="mark-complete" data-id="${bonus.id}">
-      ✓ Mark Complete
+      \u2713 Mark Complete
     </button>`;
   } else if (bonus.status === 'completed') {
     html += `<button class="btn-reactivate" data-action="reactivate" data-id="${bonus.id}">
@@ -397,7 +414,6 @@ function renderExpandedContent(bonus) {
     </button>`;
   }
 
-  // Edit / Delete
   html += `
     <div class="card-actions">
       <button class="btn-secondary" data-action="edit" data-id="${bonus.id}">Edit</button>
@@ -409,6 +425,7 @@ function renderExpandedContent(bonus) {
 
 // === Main Render ===
 function render() {
+  if (!activeCards) return; // not on index page
   const active = bonuses.filter(b => b.status === 'active');
   const completed = bonuses.filter(b => b.status === 'completed');
 
@@ -424,26 +441,38 @@ function render() {
 }
 
 // === Init ===
-exportBtn.addEventListener('click', handleExport);
-importBtn.addEventListener('click', () => importFileInput.click());
-importFileInput.addEventListener('change', (e) => {
-  if (e.target.files.length > 0) {
-    handleImport(e.target.files[0]);
-    importFileInput.value = '';
-  }
-});
+if (exportBtn) {
+  exportBtn.addEventListener('click', handleExport);
+  importBtn.addEventListener('click', () => importFileInput.click());
+  importFileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleImport(e.target.files[0]);
+      importFileInput.value = '';
+    }
+  });
+}
 
 async function init() {
-  try {
-    bonuses = (await getAll()).map(normalizeBonus);
-  } catch (err) {
-    console.error('[DB] Failed to load bonuses:', err);
-    document.getElementById('active-cards').innerHTML =
-      '<p style="padding:20px;color:#ff3b30;text-align:center">Could not load data. Please check that your browser supports IndexedDB and is not in private mode.</p>';
-    return;
+  // Load initial data from server-rendered JSON, or fall back to API
+  const initialDataEl = document.getElementById('initial-data');
+  if (initialDataEl) {
+    try {
+      bonuses = JSON.parse(initialDataEl.textContent).map(normalizeBonus);
+    } catch (err) {
+      console.error('Failed to parse initial data:', err);
+      bonuses = [];
+    }
+  } else {
+    try {
+      bonuses = (await apiGetAll()).map(normalizeBonus);
+    } catch (err) {
+      console.error('[API] Failed to load bonuses:', err);
+    }
   }
   render();
 }
+
+init();
 
 // === Event Handlers ===
 document.getElementById('app').addEventListener('click', async (e) => {
@@ -452,7 +481,6 @@ document.getElementById('app').addEventListener('click', async (e) => {
   const action = actionEl?.dataset.action;
 
   if (!action) {
-    // No data-action — check if clicking collapsed card area to expand
     const collapsed = target.closest('.card-collapsed');
     if (collapsed) {
       const card = collapsed.closest('.card');
@@ -552,7 +580,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
     const bonus = bonuses.find(b => b.id === bId);
     const req = bonus?.requirements.find(r => r.id === reqId);
     if (req) {
-      const val = prompt(`Enter amount (0–${req.targetAmount}):`, req.currentProgress);
+      const val = prompt(`Enter amount (0\u2013${req.targetAmount}):`, req.currentProgress);
       if (val !== null) {
         const num = Math.max(0, Math.min(req.targetAmount, parseFloat(val) || 0));
         req.currentProgress = num;
@@ -597,12 +625,9 @@ document.getElementById('app').addEventListener('click', async (e) => {
     const sortedIndex = Number(actionEl.dataset.index);
     const bonus = bonuses.find(b => b.id === bId);
     if (bonus) {
-      // Build sorted list, find the target date value
       const sorted = [...bonus.directDepositDates].sort();
       const targetDate = sorted[sortedIndex];
-      // Count how many times this date appears before sortedIndex in the sorted array
       const precedingCount = sorted.slice(0, sortedIndex).filter(d => d === targetDate).length;
-      // Remove the (precedingCount+1)th occurrence of targetDate from the original array
       let occurrences = 0;
       for (let i = 0; i < bonus.directDepositDates.length; i++) {
         if (bonus.directDepositDates[i] === targetDate) {
@@ -632,7 +657,6 @@ document.getElementById('app').addEventListener('input', (e) => {
 
   req.currentProgress = Number(target.value);
 
-  // Update display inline without re-rendering entire card
   const block = target.closest('.requirement-block');
   if (block) {
     const progressText = block.querySelector('.req-progress-text');
@@ -670,19 +694,20 @@ document.getElementById('app').addEventListener('change', async (e) => {
   }
 });
 
-completedToggle.addEventListener('click', () => {
-  const arrow = completedToggle.querySelector('.toggle-arrow');
-  const cards = document.getElementById('completed-cards');
-  const isCollapsed = arrow.classList.contains('collapsed');
-  arrow.classList.toggle('collapsed');
-  cards.hidden = !isCollapsed ? true : false;
-  completedToggle.setAttribute('aria-expanded', isCollapsed ? 'true' : 'false');
-});
+if (completedToggle) {
+  completedToggle.addEventListener('click', () => {
+    const arrow = completedToggle.querySelector('.toggle-arrow');
+    const cards = document.getElementById('completed-cards');
+    const isCollapsed = arrow.classList.contains('collapsed');
+    arrow.classList.toggle('collapsed');
+    cards.hidden = !isCollapsed ? true : false;
+    completedToggle.setAttribute('aria-expanded', isCollapsed ? 'true' : 'false');
+  });
+}
 
 // === Modal ===
 function openModal() {
   modalOverlay.hidden = false;
-  // Force reflow for CSS transition
   modalOverlay.offsetHeight;
   modalOverlay.classList.add('visible');
   document.body.style.overflow = 'hidden';
@@ -706,13 +731,11 @@ modalOverlay.addEventListener('click', (e) => {
   if (e.target === modalOverlay) closeModal();
 });
 
-// Hide/show ETF field based on open length
 openLengthInput.addEventListener('input', () => {
   const val = Number(openLengthInput.value) || 0;
   etfRow.hidden = val <= 0;
 });
 
-// === Add New button ===
 addNewBtn.addEventListener('click', () => {
   editingBonusId = null;
   modalTitle.textContent = 'Add New Bonus';
@@ -723,7 +746,8 @@ addNewBtn.addEventListener('click', () => {
 });
 
 // === Requirement Rows ===
-function addRequirementRow(existing = null) {
+function addRequirementRow(existing) {
+  existing = existing || null;
   const row = document.createElement('div');
   row.className = 'requirement-form-row';
   const reqId = existing?.id || generateId();
@@ -806,7 +830,6 @@ bonusForm.addEventListener('submit', async (e) => {
   const openLenUnit = document.getElementById('f-openLengthUnit').value;
   const minBalStr = document.getElementById('f-minBalance').value;
 
-  // Gather requirements
   const reqRows = requirementsList.querySelectorAll('.requirement-form-row');
   const existingBonus = editingBonusId ? bonuses.find(b => b.id === editingBonusId) : null;
 
@@ -816,8 +839,6 @@ bonusForm.addEventListener('submit', async (e) => {
     const description = row.querySelector('[name="req-description"]').value.trim();
     const targetAmount = Number(row.querySelector('[name="req-target"]').value);
     const perUnitVal = row.querySelector('[name="req-perUnit"]').value;
-
-    // Preserve progress and completed state when editing
     const existingReq = existingBonus?.requirements.find(r => r.id === reqId);
 
     return {
@@ -827,7 +848,7 @@ bonusForm.addEventListener('submit', async (e) => {
       targetAmount,
       currentProgress: existingReq?.currentProgress ?? 0,
       perUnitMinimum: perUnitVal !== '' ? Number(perUnitVal) : null,
-      completed: existingReq?.completed ?? false
+      completed: existingReq?.completed ?? false,
     };
   });
 
@@ -850,17 +871,16 @@ bonusForm.addEventListener('submit', async (e) => {
     requirements,
     directDepositDates: existingBonus?.directDepositDates ?? [],
     status: existingBonus?.status ?? 'active',
-    createdAt: existingBonus?.createdAt ?? new Date().toISOString()
+    createdAt: existingBonus?.createdAt ?? new Date().toISOString(),
   };
 
   if (!(await persistBonus(bonus))) return;
 
-  // Update local state
   const idx = bonuses.findIndex(b => b.id === bonus.id);
   if (idx >= 0) {
-    bonuses[idx] = bonus;
+    bonuses[idx] = normalizeBonus(bonus);
   } else {
-    bonuses.push(bonus);
+    bonuses.push(normalizeBonus(bonus));
   }
 
   closeModal();
@@ -868,13 +888,94 @@ bonusForm.addEventListener('submit', async (e) => {
   render();
 });
 
-init();
+// ── Scraper Page ──────────────────────────────────────────
 
-// === Service Worker ===
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(reg => console.log('[SW] Registered:', reg.scope))
-      .catch(err => console.error('[SW] Registration failed:', err));
+const scrapeBtn = document.getElementById('scrape-btn');
+if (scrapeBtn) {
+  const scraperResults = document.getElementById('scraper-results');
+  const scraperLoading = document.getElementById('scraper-loading');
+  const scraperError = document.getElementById('scraper-error');
+  const scraperEmpty = document.getElementById('scraper-empty');
+
+  scrapeBtn.addEventListener('click', async () => {
+    scrapeBtn.disabled = true;
+    scraperLoading.hidden = false;
+    scraperError.hidden = true;
+    scraperResults.innerHTML = '';
+    scraperEmpty.hidden = true;
+
+    try {
+      const res = await fetch('/api/scrape', { method: 'POST' });
+      const data = await res.json();
+
+      if (!data.ok) throw new Error(data.error || 'Scrape failed');
+
+      if (data.results.length === 0) {
+        scraperEmpty.textContent = 'No matching bonuses found. The page structure may have changed.';
+        scraperEmpty.hidden = false;
+        return;
+      }
+
+      renderScraperResults(data.results);
+    } catch (err) {
+      scraperError.textContent = 'Error: ' + err.message;
+      scraperError.hidden = false;
+    } finally {
+      scrapeBtn.disabled = false;
+      scraperLoading.hidden = true;
+    }
+  });
+
+  function renderScraperResults(results) {
+    scraperResults.innerHTML = results.map((item, i) => `
+      <div class="card" style="cursor:default">
+        <div class="card-header">
+          <span class="card-bank-name">${escapeHtml(item.bankName)}</span>
+          <span class="card-bonus-amount">${formatCurrency(item.bonusAmount)}</span>
+        </div>
+        <div class="card-requirements-summary">${escapeHtml(item.description)}</div>
+        <div class="card-actions" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--color-border)">
+          <button class="btn-primary scraper-add-btn" data-index="${i}" style="flex:1">Add to Active</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  scraperResults.addEventListener('click', async (e) => {
+    const addBtn = e.target.closest('.scraper-add-btn');
+    if (!addBtn) return;
+
+    const index = parseInt(addBtn.dataset.index, 10);
+
+    // Get the scraped data from the results array
+    const scrapeRes = await fetch('/api/scrape', { method: 'POST' });
+    const scrapeData = await scrapeRes.json();
+    if (!scrapeData.ok || !scrapeData.results[index]) {
+      alert('Could not find the scraped data. Try scraping again.');
+      return;
+    }
+
+    const item = scrapeData.results[index];
+    const bonus = {
+      bankName: item.bankName,
+      accountType: 'personal_checking',
+      dateOpened: new Date().toISOString().split('T')[0],
+      bonusAmount: item.bonusAmount,
+      bonusDeadline: '',
+      accountCloseDate: '',
+      minimumOpenLength: null,
+      earlyTerminationFee: null,
+      minimumBalanceRequirement: null,
+      notes: 'From Doctor of Credit: ' + item.description,
+      requirements: [],
+      directDepositDates: [],
+      status: 'active',
+    };
+
+    if (!(await persistBonus(bonus))) return;
+    bonuses.push(normalizeBonus(bonus));
+    addBtn.textContent = '\u2713 Added!';
+    addBtn.disabled = true;
+    addBtn.style.background = 'var(--color-success)';
   });
 }
