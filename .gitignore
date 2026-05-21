@@ -1,0 +1,37 @@
+# Virtual Environment
+venv/
+env/
+.venv/
+env.*
+
+# Database
+bank_bonus.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Local config
+.env
+local_settings.py
