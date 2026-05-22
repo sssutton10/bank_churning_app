@@ -42,10 +42,12 @@ GitHub Pages auto-deploys from the `main` branch. The app is live at:
 **Every time you deploy, bump the cache version in `service-worker.js`:**
 
 ```js
-const CACHE_NAME = 'bonus-tracker-v2'; // increment this → v3, v4, etc.
+const CACHE_NAME = 'bonus-tracker-v4'; // increment this → v5, v6, etc.
 ```
 
-Without this, users (including the home screen PWA on iPhone) will keep serving the old cached files. The new version triggers the activate handler to delete the old cache and claim the new one.
+Without this, the browser won't detect that a new version exists and the update banner will never appear.
+
+**How updates reach the user:** When you push with a new `CACHE_NAME`, the next time the user opens the home screen icon a blue "Update available — tap to refresh" banner appears at the top. Tapping it reloads to the new version. Tapping × dismisses the banner (update deferred until next open). The old SW stays active until the user taps the banner — no surprise mid-session reloads.
 
 ## File Map
 
@@ -112,9 +114,9 @@ Requirement {
 3. Write it in the form submit handler in `app.js`
 4. Display it in `renderExpandedContent()` in `app.js`
 
-**Forcing a cache refresh on iPhone:**
-- Close the PWA from app switcher and reopen
-- Or delete the home screen app and re-add from Safari
+**Updating the app on iPhone:**
+- Push code with a bumped `CACHE_NAME` → open the existing home screen icon → tap the blue "Update available" banner
+- **Do not delete and re-add the icon** — iOS wipes all app data (IndexedDB) when you remove a home screen PWA
 
 **XSS protection:** All user-provided strings rendered into HTML must go through `escapeHtml()` (defined in `app.js`). Numbers and dates are safe to render directly.
 
@@ -124,6 +126,6 @@ Requirement {
 
 - **iOS date inputs:** `text-align: left` alone doesn't work on iOS Safari — also need `text-align-last: left` and `display: flex` on `input[type="date"]`
 - **ES modules require a server:** Can't open `index.html` directly; must use HTTP
-- **Service worker won't update on its own:** Must bump `CACHE_NAME` version to force old cache eviction
+- **Service worker updates require a `CACHE_NAME` bump:** Without it the browser won't detect a new version and the update banner won't appear. The SW waits for user approval (banner tap) before activating — it does not auto-activate mid-session.
 - **`minimumBalanceRequirement: 0` is valid** — use `!= null` checks, not falsy checks
 - **Requirement `completed` is manual** — never auto-set it based on progress values

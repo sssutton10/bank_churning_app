@@ -35,3 +35,11 @@ coverage.xml
 # Local config
 .env
 local_settings.py
+
+# Claude Code session data
+.claude/
+
+# Local deployment scripts (Raspberry Pi)
+pi.service
+pi_transfer.py
+start.sh
