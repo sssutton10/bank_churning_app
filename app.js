@@ -1,8 +1,21 @@
 import { getAll, save, deleteById } from './db.js';
 
 // === Export/Import ===
-function downloadJSON(data, filename) {
+async function handleExport() {
+  const data = await getAll();
+  const filename = `bonus-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+
+  if (navigator.canShare?.({ files: [new File([blob], filename, { type: 'application/json' })] })) {
+    try {
+      await navigator.share({ files: [new File([blob], filename, { type: 'application/json' })], title: 'Bonus Tracker Backup' });
+    } catch (err) {
+      if (err.name !== 'AbortError') alert('Export failed: ' + err.message);
+    }
+    return;
+  }
+
+  // Fallback: trigger file download
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -11,11 +24,6 @@ function downloadJSON(data, filename) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-async function handleExport() {
-  const data = await getAll();
-  downloadJSON(data, `bonus-tracker-backup-${new Date().toISOString().split('T')[0]}.json`);
 }
 
 async function handleImport(file) {
@@ -870,11 +878,53 @@ bonusForm.addEventListener('submit', async (e) => {
 
 init();
 
-// === Service Worker ===
+// === Service Worker + Update Banner ===
+function showUpdateBanner(registration) {
+  if (document.getElementById('update-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'update-banner';
+  banner.className = 'update-banner';
+  banner.innerHTML =
+    '<span class="update-banner__msg">Update available — tap to refresh</span>' +
+    '<button class="update-banner__dismiss" aria-label="Dismiss">×</button>';
+
+  banner.querySelector('.update-banner__msg').addEventListener('click', () => {
+    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    banner.remove();
+  });
+  banner.querySelector('.update-banner__dismiss').addEventListener('click', () => {
+    banner.remove();
+  });
+
+  document.body.prepend(banner);
+}
+
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(reg => console.log('[SW] Registered:', reg.scope))
-      .catch(err => console.error('[SW] Registration failed:', err));
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('./service-worker.js');
+
+      // Reload the page once the new SW takes control
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+
+      // SW was already waiting when page loaded (e.g. update deployed while app was closed)
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        showUpdateBanner(registration);
+      }
+
+      // SW installs during this session
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdateBanner(registration);
+          }
+        });
+      });
+    } catch (err) {
+      console.error('[SW] Registration failed:', err);
+    }
   });
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bonus-tracker-v3';
+const CACHE_NAME = 'bonus-tracker-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -10,13 +10,16 @@ const ASSETS = [
   './icons/icon-512.png'
 ];
 
-// Install — pre-cache all assets
+// Install — pre-cache all assets, then wait for explicit SKIP_WAITING message
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
+});
+
+// Skip waiting when the app explicitly requests it (via update banner)
+self.addEventListener('message', (e) => {
+  if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // Activate — delete old caches
