@@ -64,6 +64,7 @@ body {
 .header-actions button {
   padding: 8px 12px;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -102,6 +103,28 @@ body {
 
 .btn-secondary:hover {
   background: rgba(0,122,255,0.08);
+}
+
+.btn-icon-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+  font-family: var(--font);
+}
+
+.btn-icon-outline:hover {
+  background: rgba(0,122,255,0.08);
+}
+
+.btn-icon-outline:active {
+  background: rgba(0,122,255,0.15);
 }
 
 .btn-icon {
